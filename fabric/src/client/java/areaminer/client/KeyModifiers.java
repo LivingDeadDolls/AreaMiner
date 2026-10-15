@@ -12,7 +12,7 @@ final class KeyModifiers {
     static boolean held(KeyMapping modifier, InputWithModifiers event) {
         if (modifier.isUnbound()) return true;
         InputConstants.Key key = InputConstants.getKey(modifier.saveString());
-        if (key.getType() == InputConstants.Type.KEYBOARD) {
+        if (key.getType() == InputConstants.Type.KEYSYM) {
             int code = key.getValue();
             if (code == InputConstants.KEY_LSHIFT || code == InputConstants.KEY_RSHIFT) return event.hasShiftDown();
             if (code == InputConstants.KEY_LCONTROL || code == InputConstants.KEY_RCONTROL) return event.hasControlDown();

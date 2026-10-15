@@ -71,9 +71,9 @@ public final class AreaMinerClient implements ClientModInitializer {
             }
         } catch (Exception e) { status("areaminer.status.load_failed", true); }
         var category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("areaminer_client","controls"));
-        cycleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.cycle",InputConstants.Type.KEYBOARD,InputConstants.KEY_F,category));
-        modifierKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.modifier",InputConstants.Type.KEYBOARD,InputConstants.KEY_LSHIFT,category));
-        settingsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.settings",InputConstants.Type.KEYBOARD,InputConstants.UNKNOWN.getValue(),category));
+        cycleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.cycle",InputConstants.Type.KEYSYM,InputConstants.KEY_F,category));
+        modifierKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.modifier",InputConstants.Type.KEYSYM,InputConstants.KEY_LSHIFT,category));
+        settingsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.settings",InputConstants.Type.KEYSYM,InputConstants.UNKNOWN.getValue(),category));
         // Payload types are registered by the common entrypoint (AreaMinerMod) for both sides.
         ClientPlayNetworking.registerGlobalReceiver(SettingsPayload.TYPE,(payload,context) -> receive(payload.text()));
         // Fabric sends minecraft:register right after JOIN. Paper drops replies on channels the client has not
