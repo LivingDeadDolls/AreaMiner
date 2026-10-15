@@ -71,9 +71,9 @@ public final class AreaMinerClient implements ClientModInitializer {
             }
         } catch (Exception e) { status("areaminer.status.load_failed", true); }
         var category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("areaminer_client","controls"));
-        cycleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.cycle",InputConstants.Type.KEYBOARD,InputConstants.KEY_F,category));
-        modifierKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.modifier",InputConstants.Type.KEYBOARD,InputConstants.KEY_LSHIFT,category));
-        settingsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.settings",InputConstants.Type.KEYBOARD,InputConstants.UNKNOWN.getValue(),category));
+        cycleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.cycle",InputConstants.Type.KEYSYM,InputConstants.KEY_F,category));
+        modifierKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.modifier",InputConstants.Type.KEYSYM,InputConstants.KEY_LSHIFT,category));
+        settingsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.areaminer_client.settings",InputConstants.Type.KEYSYM,InputConstants.UNKNOWN.getValue(),category));
         // Payload types are registered by the common entrypoint (AreaMinerMod) for both sides.
         ClientPlayNetworking.registerGlobalReceiver(SettingsPayload.TYPE,(payload,context) -> receive(payload.text()));
         // Fabric sends minecraft:register right after JOIN. Paper drops replies on channels the client has not
@@ -149,7 +149,7 @@ public final class AreaMinerClient implements ClientModInitializer {
         if (player != null) player.sendOverlayMessage(Component.translatable("areaminer.overlay.unsupported").withStyle(ChatFormatting.GOLD));
     }
     private static void refresh() {
-        if (Minecraft.getInstance().gui.screen() instanceof AreaMinerScreen screen) screen.received();
+        if (Minecraft.getInstance().screen instanceof AreaMinerScreen screen) screen.received();
     }
     public static void apply(Protocol.State state) {
         config.state = state; config.pending = true;
@@ -159,12 +159,12 @@ public final class AreaMinerClient implements ClientModInitializer {
     }
     private static boolean inGame() {
         Minecraft client = Minecraft.getInstance();
-        return client.player != null && client.gui.screen() == null && client.gui.overlay() == null;
+        return client.player != null && client.screen == null && client.getOverlay() == null;
     }
     public static boolean keyboard(int action, KeyEvent event) {
         if (!inGame()) return false;
         if (settingsKey.matches(event)) {
-            if (action == 1) Minecraft.getInstance().gui.setScreen(new AreaMinerScreen(null));
+            if (action == 1) Minecraft.getInstance().setScreen(new AreaMinerScreen(null));
             return true;
         }
         if (unsupported && cycleKey.matches(event) && KeyModifiers.held(modifierKey, event)) {
@@ -181,7 +181,7 @@ public final class AreaMinerClient implements ClientModInitializer {
         if (!inGame()) return false;
         var mouse = new MouseButtonEvent(0,0,event);
         if (settingsKey.matchesMouse(mouse)) {
-            if (action == 1) Minecraft.getInstance().gui.setScreen(new AreaMinerScreen(null));
+            if (action == 1) Minecraft.getInstance().setScreen(new AreaMinerScreen(null));
             return true;
         }
         if (unsupported && cycleKey.matchesMouse(mouse) && KeyModifiers.held(modifierKey, event)) {

@@ -11,7 +11,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -77,9 +77,9 @@ final class FabricPreview {
         displays.keySet().removeIf(id -> !online.contains(id));
     }
     private int spawn(ServerPlayer player, ServerLevel world, BlockPos position) {
-        Display.BlockDisplay entity = new Display.BlockDisplay(EntityTypes.BLOCK_DISPLAY, world);
+        Display.BlockDisplay entity = new Display.BlockDisplay(EntityType.BLOCK_DISPLAY, world);
         entity.setPos(position.getX(), position.getY(), position.getZ());
-        ((BlockDisplayAccessor) entity).areaminer$setBlockState(Blocks.CONCRETE.white().defaultBlockState());
+        ((BlockDisplayAccessor) entity).areaminer$setBlockState(Blocks.WHITE_CONCRETE.defaultBlockState());
         DisplayAccessor display = (DisplayAccessor) entity;
         // Slightly inset cubes leave a visible gap between adjacent outlines.
         display.areaminer$setTransformation(new Transformation(new Vector3f(.02f, .02f, .02f),
@@ -89,7 +89,7 @@ final class FabricPreview {
         display.areaminer$setShadowRadius(0f);
         entity.setGlowingTag(true);
         player.connection.send(new ClientboundAddEntityPacket(entity.getId(), entity.getUUID(),
-            position.getX(), position.getY(), position.getZ(), 0f, 0f, EntityTypes.BLOCK_DISPLAY, 0, Vec3.ZERO, 0d));
+            position.getX(), position.getY(), position.getZ(), 0f, 0f, EntityType.BLOCK_DISPLAY, 0, Vec3.ZERO, 0d));
         var values = entity.getEntityData().getNonDefaultValues();
         if (values != null) player.connection.send(new ClientboundSetEntityDataPacket(entity.getId(), values));
         return entity.getId();

@@ -26,7 +26,7 @@ public abstract class OptionsScreenMixin {
     private void areaminer$addButton(CallbackInfo callback,@Local(ordinal=1) LinearLayout row) {
         Screen screen = (Screen)(Object)this;
         row.addChild(SpriteIconButton.builder(Component.translatable("areaminer.screen.open"),
-                b -> Minecraft.getInstance().gui.setScreen(new AreaMinerScreen(screen)), true)
+                b -> Minecraft.getInstance().setScreen(new AreaMinerScreen(screen)), true)
             .sprite(AREAMINER_ICON, 16, 16).size(20, 20).withTootip().build());
     }
 }

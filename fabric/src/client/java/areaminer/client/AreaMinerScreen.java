@@ -47,7 +47,7 @@ public final class AreaMinerScreen extends Screen {
         b.setTooltip(Tooltip.create(t(meaningKey)));
         return b;
     }
-    private void keys() { minecraft.gui.setScreen(new KeyBindsScreen(this, minecraft.options)); }
+    private void keys() { minecraft.setScreen(new KeyBindsScreen(this, minecraft.options)); }
     @Override protected void init() {
         String[] pages = {"areaminer.tab.general", "areaminer.tab.range", "areaminer.tab.tools"};
         int tabWidth = (total() - 8) / 3;
@@ -110,5 +110,5 @@ public final class AreaMinerScreen extends Screen {
         int color = AreaMinerClient.statusError ? 0xFFFF7777 : AreaMinerClient.supported ? 0xFF99FFAA : 0xFFFFDD88;
         for (int i = 0; i < shown; i++) graphics.text(font, lines.get(i), 12, height - 44 - (shown - 1 - i) * (font.lineHeight + 1), color);
     }
-    @Override public void onClose() { minecraft.gui.setScreen(parent); }
+    @Override public void onClose() { minecraft.setScreen(parent); }
 }
