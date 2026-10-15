@@ -1,0 +1,53 @@
+apply plugin: 'net.fabricmc.fabric-loom'
+
+// The jar task reads common's output below.
+evaluationDependsOn(':common')
+
+repositories {
+	maven {
+		name = 'TerraformersMC'
+		url = 'https://maven.terraformersmc.com/releases/'
+		content { includeGroup 'com.terraformersmc' }
+	}
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		areaminer {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Permission nodes for LuckPerms etc.; falls back to operator levels when no provider is installed.
+	implementation "me.lucko:fabric-permissions-api:${project.fabric_permissions_api_version}"
+	include "me.lucko:fabric-permissions-api:${project.fabric_permissions_api_version}"
+
+	// Optional: settings button in Mod Menu.
+	clientCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
+
+	implementation project(':common')
+}
+
+processResources {
+	def props = [version: project.version, minecraft_version: project.minecraft_version, loader_version: project.loader_version]
+	inputs.properties props
+	filesMatching('fabric.mod.json') {
+		expand props
+	}
+}
+
+jar {
+	archiveFileName = "AreaMiner-fabric-${project.version}+${project.minecraft_version}.jar"
+	// common is plain Java; bundle its classes directly rather than as a nested jar.
+	from(project(':common').sourceSets.main.output)
+	from(rootProject.file('LICENSE'))
+}

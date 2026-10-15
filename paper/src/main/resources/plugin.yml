@@ -1,0 +1,18 @@
+name: AreaMiner
+version: '${version}'
+main: areaminer.paper.AreaMiner
+api-version: '${minecraft_version}'
+description: Area mining for stone and soil
+author: Yuhrp
+softdepend: [WorldGuard]
+commands:
+  areaminer:
+    description: Toggle and configure area mining
+    usage: /areaminer help
+permissions:
+  areaminer.use:
+    description: Use area mining
+    default: true
+  areaminer.admin:
+    description: Reload the configuration
+    default: op

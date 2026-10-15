@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "areaminer.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "KeyboardMixin",
+    "MouseMixin",
+    "OptionsScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,84 @@
+# true: スニーク＋オフハンド交換（標準F） / false: Fのみ
+require-sneaking: true
+show-join-help: true
+# モードON中、視線先の採掘候補を本人だけに発光表示（5tickごとに更新）。
+preview-enabled: true
+# 最大1000ブロックの処理を複数tickに分割。耐久は各ブロックで消費。
+blocks-per-player-per-tick: 64
+blocks-total-per-tick: 256
+# モードON中に下の ores の鉱石を掘ると、範囲の代わりにつながった同じ鉱石（斜めの接触も含む）をすべて掘る。
+# 石と深層岩の同じ鉱石は同じ鉱脈として扱う。その鉱石をドロップさせられるツールのときだけ。
+# vein-max-blocks: 1回の上限ブロック数（最初の鉱石を含む、1～1000。最初の鉱石から各方向16マス以内）。
+vein-mining: true
+vein-max-blocks: 64
+# この一覧内のブロックが対象。石と土が混在していてもまとめて破壊。
+# 鉱石は ores（鉱脈）で扱う。木材・チェスト・岩盤は既定で対象外。
+materials:
+  - STONE
+  - COBBLESTONE
+  - MOSSY_COBBLESTONE
+  - GRANITE
+  - POLISHED_GRANITE
+  - DIORITE
+  - POLISHED_DIORITE
+  - ANDESITE
+  - POLISHED_ANDESITE
+  - DEEPSLATE
+  - COBBLED_DEEPSLATE
+  - POLISHED_DEEPSLATE
+  - TUFF
+  - POLISHED_TUFF
+  - CALCITE
+  - SMOOTH_STONE
+  - STONE_BRICKS
+  - MOSSY_STONE_BRICKS
+  - CRACKED_STONE_BRICKS
+  - CHISELED_STONE_BRICKS
+  - DEEPSLATE_BRICKS
+  - DEEPSLATE_TILES
+  - NETHERRACK
+  - BASALT
+  - SMOOTH_BASALT
+  - POLISHED_BASALT
+  - BLACKSTONE
+  - POLISHED_BLACKSTONE
+  - END_STONE
+  - SANDSTONE
+  - RED_SANDSTONE
+  - DIRT
+  - COARSE_DIRT
+  - ROOTED_DIRT
+  - GRASS_BLOCK
+  - PODZOL
+  - MYCELIUM
+  - DIRT_PATH
+  - FARMLAND
+  - MUD
+  - PACKED_MUD
+  - CLAY
+  - SAND
+  - RED_SAND
+  - GRAVEL
+  - SOUL_SAND
+  - SOUL_SOIL
+# 鉱脈として掘る鉱石。
+ores:
+  - COAL_ORE
+  - DEEPSLATE_COAL_ORE
+  - IRON_ORE
+  - DEEPSLATE_IRON_ORE
+  - COPPER_ORE
+  - DEEPSLATE_COPPER_ORE
+  - GOLD_ORE
+  - DEEPSLATE_GOLD_ORE
+  - REDSTONE_ORE
+  - DEEPSLATE_REDSTONE_ORE
+  - EMERALD_ORE
+  - DEEPSLATE_EMERALD_ORE
+  - LAPIS_ORE
+  - DEEPSLATE_LAPIS_ORE
+  - DIAMOND_ORE
+  - DEEPSLATE_DIAMOND_ORE
+  - NETHER_GOLD_ORE
+  - NETHER_QUARTZ_ORE
+  - ANCIENT_DEBRIS
