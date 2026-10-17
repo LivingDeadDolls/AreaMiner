@@ -20,6 +20,8 @@ final class ClientLink implements PluginMessageListener {
     void send(Player p, String status, String message) {
         Map<String,String> data = plugin.snapshot(p).fields();
         data.put("version", Protocol.VERSION); data.put("status", status); data.put("message", message);
+        // The client mod disables its drops button while the server decides where drops go.
+        data.put("dropslock", "" + (plugin.forcedDrops() != null));
         p.sendPluginMessage(plugin, Protocol.CHANNEL, Protocol.encode(Protocol.text(data)));
     }
     void changed(Player p) { if (connected(p)) send(p,"updated",""); }

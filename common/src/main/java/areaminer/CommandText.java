@@ -28,13 +28,14 @@ public final class CommandText {
         List<String> options = new ArrayList<>();
         switch (args.length) {
             case 1 -> {
-                options.addAll(List.of("plane", "cube", "stairs", "flatten", "next", "off", "status", "help", "highlight", "drops", "durability", "tools"));
+                options.addAll(List.of("plane", "cube", "stairs", "flatten", "next", "off", "status", "help", "highlight", "color", "drops", "durability", "tools"));
                 if (admin) options.add("reload");
             }
             case 2 -> {
                 if (plane || cube || stairs || flatten) options.addAll(range(1, Settings.MAX_SIDE));
                 else switch (first) {
                     case "highlight" -> options.addAll(List.of("on", "off"));
+                    case "color" -> { options.addAll(Settings.COLORS.keySet()); options.add("gaming"); }
                     case "drops" -> options.addAll(List.of("feet", "block"));
                     case "durability" -> options.addAll(List.of("normal", "half", "none"));
                     case "tools" -> options.add("all");
@@ -44,6 +45,9 @@ public final class CommandText {
             case 3 -> {
                 if (plane || cube || flatten) options.addAll(range(1, Settings.MAX_SIDE));
                 else if (stairs) options.addAll(range(2, 10));
+                else if (first.equals("color") && (args[1].equalsIgnoreCase("gaming") || args[1].equalsIgnoreCase("rainbow"))) {
+                    options.addAll(range(1, Settings.MAX_GAMING_SPEED));
+                }
             }
             case 4 -> { if (cube || stairs || flatten) options.addAll(range(1, 10)); }
             default -> { }

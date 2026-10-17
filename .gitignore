@@ -27,7 +27,7 @@ replay_*.log
 *.hprof
 *.jfr
 
-# written by Minecraft's logger when the tests run
+# Minecraft's log folder
 logs/
 
 # OS

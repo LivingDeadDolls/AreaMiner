@@ -20,6 +20,8 @@ final class Preview {
     private record Position(UUID world, int x, int y, int z) {}
     private final AreaMiner plugin;
     private final Map<UUID, Map<Position, BlockDisplay>> displays = new HashMap<>();
+    /** Tick of each player's last gaming update. */
+    private final Map<UUID, Integer> lastGaming = new HashMap<>();
 
     Preview(AreaMiner plugin) { this.plugin = plugin; }
     void clearStale() {
@@ -32,6 +34,7 @@ final class Preview {
     void clear(UUID player) {
         var old = displays.remove(player);
         if (old != null) old.values().forEach(BlockDisplay::remove);
+        lastGaming.remove(player);
     }
     void clear() {
         for (UUID player : new ArrayList<>(displays.keySet())) clear(player);
@@ -61,6 +64,8 @@ final class Preview {
             for (Shape.Offset offset : plugin.plan(player, origin).keySet()) {
                 add(wanted, world, origin.getX()+offset.x(), origin.getY()+offset.y(), origin.getZ()+offset.z());
             }
+            int color = plugin.highlightColor(player);
+            int speed = plugin.gamingSpeed(player), quantum = Settings.gamingPlan(wanted.size(), speed).quantum();
             Map<Position, BlockDisplay> current = displays.get(player.getUniqueId());
             if (current == null) {
                 current = new HashMap<>();
@@ -82,18 +87,39 @@ final class Preview {
                         entity.setGravity(false);
                         entity.setInvulnerable(true);
                         entity.addScoreboardTag(TAG);
-                        // Slightly inset cubes leave a visible gap between adjacent outlines.
+                        // Inset just enough that the cube does not overlap the block's faces (flush, it covers them
+                        // black). The glow outlines the whole area as one; a wider gap only left notches at each seam.
                         entity.setBlock(Material.WHITE_CONCRETE.createBlockData());
-                        entity.setTransformation(new Transformation(new Vector3f(.02f, .02f, .02f),
-                            new Quaternionf(), new Vector3f(.96f, .96f, .96f), new Quaternionf()));
+                        entity.setTransformation(new Transformation(new Vector3f(.002f, .002f, .002f),
+                            new Quaternionf(), new Vector3f(.996f, .996f, .996f), new Quaternionf()));
                         entity.setGlowing(true);
-                        entity.setGlowColorOverride(Color.AQUA);
+                        entity.setGlowColorOverride(Color.fromRGB(color == Settings.GAMING
+                            ? Settings.gaming(plugin.getServer().getCurrentTick(), speed, position.x(), position.y(), position.z(), quantum) : color));
                         entity.setViewRange(1f);
                         entity.setShadowRadius(0);
                     });
                 current.put(position, display);
                 player.showEntity(plugin, display);
             }
+        }
+    }
+    /**
+     * Moves the gaming highlight along the rainbow: each cube gets its color for this tick (Paper sends only the cubes
+     * whose color changed). Large areas keep to Settings.GAMING_BUDGET: coarser hue steps, then fewer updates.
+     */
+    void animate() {
+        int tick = plugin.getServer().getCurrentTick();
+        for (var entry : displays.entrySet()) {
+            Player player = plugin.getServer().getPlayer(entry.getKey());
+            if (player == null || plugin.highlightColor(player) != Settings.GAMING) continue;
+            int speed = plugin.gamingSpeed(player);
+            Settings.GamingPlan plan = Settings.gamingPlan(Math.max(1, entry.getValue().size()), speed);
+            Integer last = lastGaming.get(entry.getKey());
+            if (last != null && tick - last < plan.interval()) continue;
+            lastGaming.put(entry.getKey(), tick);
+            entry.getValue().forEach((pos, display) -> {
+                if (display.isValid()) display.setGlowColorOverride(Color.fromRGB(Settings.gaming(tick, speed, pos.x(), pos.y(), pos.z(), plan.quantum())));
+            });
         }
     }
     private void add(Set<Position> wanted, World world, int x, int y, int z) {

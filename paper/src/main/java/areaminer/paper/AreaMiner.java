@@ -42,6 +42,8 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
     private boolean veinMining;
     private int veinMax;
     private int perPlayer, perTick;
+    /** Where everyone's drops go (config "drops"), or null when each player chooses. */
+    private Boolean forcedDrops;
     private Preview preview;
     private ClientLink clientLink;
     private final Map<UUID, Settings> preferences = new HashMap<>();
@@ -76,6 +78,7 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
         clientLink = new ClientLink(this);
         preview.clearStale();
         getServer().getScheduler().runTaskTimer(this, () -> preview.update(), 1L, 5L);
+        getServer().getScheduler().runTaskTimer(this, () -> preview.animate(), 2L, 2L);
         getServer().getPluginManager().registerEvents(this, this);
         Objects.requireNonNull(getCommand("areaminer")).setExecutor(this);
         Objects.requireNonNull(getCommand("areaminer")).setTabCompleter(this);
@@ -124,7 +127,18 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
         veinMax = Math.max(1, Math.min(1000, getConfig().getInt("vein-max-blocks", 64)));
         perPlayer = Math.max(1, Math.min(1000, getConfig().getInt("blocks-per-player-per-tick", 64)));
         perTick = Math.max(1, Math.min(4000, getConfig().getInt("blocks-total-per-tick", 256)));
+        String drops = getConfig().getString("drops", "player");
+        try { forcedDrops = Settings.dropsPolicy(drops); }
+        catch (IllegalArgumentException e) { forcedDrops = null; getLogger().warning("Ignored invalid drops (use player, feet or block): " + drops); }
     }
+    Boolean forcedDrops() { return forcedDrops; }
+    private boolean dropsAtFeet(Player p) { return forcedDrops != null ? forcedDrops : settings(p).dropsAtFeet; }
+    private String dropsLabel(Player p, Messages m) {
+        String label = m.get(dropsAtFeet(p) ? "drops.feet" : "drops.block");
+        return forcedDrops == null ? label : m.get("drops.server", label);
+    }
+    int highlightColor(Player p) { return settings(p).highlightColor; }
+    int gamingSpeed(Player p) { return settings(p).gamingSpeed; }
 
     static Messages messages(CommandSender sender) {
         return sender instanceof Player p ? Messages.of(p.locale().toString()) : Messages.ENGLISH;
@@ -334,6 +348,10 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
             result.toolMask = Math.max(0, Math.min(127, playerData.getInt(key + "tools", Settings.DEFAULT_TOOLS)));
             result.highlight = playerData.getBoolean(key + "highlight", true);
             result.dropsAtFeet = playerData.getBoolean(key + "drops-at-feet", true);
+            int color = playerData.getInt(key + "highlight-color", Settings.DEFAULT_COLOR);
+            if (Settings.validColor(color)) result.highlightColor = color;
+            int speed = playerData.getInt(key + "gaming-speed", Settings.DEFAULT_GAMING_SPEED);
+            if (Settings.validGamingSpeed(speed)) result.gamingSpeed = speed;
             double durability = playerData.getDouble(key + "durability", 1);
             if (durability == 0 || durability == .5 || durability == 1) result.durability = durability;
             return result;
@@ -349,6 +367,8 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
         playerData.set(key + "flatten-width", s.flattenWidth); playerData.set(key + "flatten-depth", s.flattenDepth); playerData.set(key + "flatten-height", s.flattenHeight);
         playerData.set(key + "tools", s.toolMask);
         playerData.set(key + "highlight", s.highlight); playerData.set(key + "drops-at-feet", s.dropsAtFeet); playerData.set(key + "durability", s.durability);
+        playerData.set(key + "highlight-color", s.highlightColor);
+        playerData.set(key + "gaming-speed", s.gamingSpeed);
         try {
             if (playersReadOnly) throw new IOException("players.yml could not be read or backed up");
             // Write a temporary file and swap it in, so a crash mid-write cannot corrupt everyone's settings.
@@ -371,11 +391,17 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
         if (name.endsWith("_HOE")) return 8;
         return material == Material.SHEARS ? 16 : 64;
     }
+    /** The player's settings as the client mod shows them: drops as the server decides, when it does. */
     Protocol.State snapshot(Player p) {
-        return Protocol.State.of(settings(p));
+        return Protocol.State.of(settings(p)).withFeet(dropsAtFeet(p));
     }
     boolean applySnapshot(Player p, Protocol.State state) {
-        state.applyTo(settings(p)); return changed(p);
+        Settings s = settings(p);
+        // While the server decides the drops, the player's own choice is kept for when it no longer does.
+        boolean own = s.dropsAtFeet;
+        state.applyTo(s);
+        if (forcedDrops != null) s.dropsAtFeet = own;
+        return changed(p);
     }
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void toolDamage(PlayerItemDamageEvent event) {
@@ -390,7 +416,7 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
         boolean original = event.getBlock().equals(originalBreaks.get(id));
         if (!internal.contains(id) && !original) return;
         if (original) originalBreaks.remove(id);
-        if (!settings(player).dropsAtFeet || event.getItems().isEmpty()) return;
+        if (!dropsAtFeet(player) || event.getItems().isEmpty()) return;
         UUID world = event.getBlock().getWorld().getUID();
         List<Item> items = new ArrayList<>(event.getItems());
         // Items are spawned after the event. Move existing drops next tick; never create duplicates.
@@ -415,7 +441,10 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
         String sub = args.length == 0 ? "next" : args[0].toLowerCase(Locale.ROOT);
         if (sub.equals("reload")) {
             if (!sender.hasPermission("areaminer.admin")) { sender.sendMessage(messages(sender).get("error.permission")); return true; }
-            reloadConfig(); readConfig(); jobs.clear(); preview.clear(); sender.sendMessage(messages(sender).get("reloaded")); return true;
+            reloadConfig(); readConfig(); jobs.clear(); preview.clear();
+            // The drops setting may have changed: the client mods show it (and whether it can be changed).
+            for (Player p : getServer().getOnlinePlayers()) clientLink.changed(p);
+            sender.sendMessage(messages(sender).get("reloaded")); return true;
         }
         if (sub.equals("help")) { help(sender); return true; }
         if (!(sender instanceof Player p)) { sender.sendMessage(messages(sender).get("error.in.game")); return true; }
@@ -461,16 +490,28 @@ public final class AreaMiner extends JavaPlugin implements Listener, TabExecutor
                 case "status" -> {
                     require(args, 1);
                     tell(p, "status.modes", s.label(mode(p), m), s.label(Mode.PLANE, m), s.label(Mode.CUBE, m), s.label(Mode.STAIRS, m), s.label(Mode.FLATTEN, m));
-                    tell(p, "status.options", s.highlight ? "ON" : "OFF", m.get(s.dropsAtFeet ? "drops.feet" : "drops.block"), s.durabilityLabel(m), s.toolMask);
+                    tell(p, "status.options", s.highlight ? "ON" : "OFF", dropsLabel(p, m), s.durabilityLabel(m), s.toolMask, s.colorLabel(m));
                 }
                 case "highlight" -> {
                     require(args, 2); String value = args[1].toLowerCase(Locale.ROOT);
                     if (!value.equals("on") && !value.equals("off")) throw new IllegalArgumentException();
                     s.highlight = value.equals("on"); changed(p); tell(p, "set.highlight", s.highlight ? "ON" : "OFF");
                 }
+                case "color" -> {
+                    // color gaming 5: the gaming highlight at speed 5.
+                    if (args.length != 2 && args.length != 3) throw new IllegalArgumentException();
+                    int color = Settings.parseColor(args[1]);
+                    if (args.length == 3) {
+                        int speed = Integer.parseInt(args[2]);
+                        if (color != Settings.GAMING || !Settings.selectableGamingSpeed(speed)) throw new IllegalArgumentException();
+                        s.gamingSpeed = speed;
+                    }
+                    s.highlightColor = color; changed(p); tell(p, "set.color", s.colorLabel(m));
+                }
                 case "drops" -> {
                     require(args, 2); String value = args[1].toLowerCase(Locale.ROOT);
                     if (!value.equals("feet") && !value.equals("block")) throw new IllegalArgumentException();
+                    if (forcedDrops != null) { tell(p, "drops.locked", m.get(forcedDrops ? "drops.feet" : "drops.block")); return true; }
                     s.dropsAtFeet = value.equals("feet"); changed(p); tell(p, "set.drops", m.get(s.dropsAtFeet ? "drops.feet" : "drops.block"));
                 }
                 case "tools" -> {

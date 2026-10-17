@@ -119,6 +119,7 @@ public final class AreaMinerMod implements ModInitializer {
             processMoves();
             tick();
             if (++ticks % 5 == 0) preview.update(s);
+            if (ticks % 2 == 0) preview.animate(s);
         });
         PlayerBlockBreakEvents.BEFORE.register(this::beforeBreak);
         PlayerBlockBreakEvents.AFTER.register(this::afterBreak);
@@ -173,6 +174,13 @@ public final class AreaMinerMod implements ModInitializer {
     }
     Mode mode(ServerPlayer p) { return modes.getOrDefault(p.getUUID(), Mode.OFF); }
     Settings settings(ServerPlayer p) { return preferences.computeIfAbsent(p.getUUID(), store::load); }
+    /** Where everyone's drops go when the server decides it (config "drops"), or null when each player chooses. */
+    Boolean forcedDrops() { return config == null ? null : config.dropsAtFeet; }
+    private boolean dropsAtFeet(ServerPlayer p) { Boolean forced = forcedDrops(); return forced != null ? forced : settings(p).dropsAtFeet; }
+    private String dropsLabel(ServerPlayer p, Messages m) {
+        String label = m.get(dropsAtFeet(p) ? "drops.feet" : "drops.block");
+        return forcedDrops() == null ? label : m.get("drops.server", label);
+    }
     // Same nodes and defaults as plugin.yml; LuckPerms etc. can override them through fabric-permissions-api.
     boolean usePermission(ServerPlayer p) { return Permissions.check(p, "areaminer.use", true); }
     private boolean eligible(ServerPlayer p) {
@@ -313,7 +321,7 @@ public final class AreaMinerMod implements ModInitializer {
     private void endBreak() { activePlayer = null; activePos = null; activeLevel = null; captured.clear(); }
     /** Ends the active break and queues its drops to move to the player's feet on the next tick. */
     private void finishBreak(ServerPlayer p) {
-        if (activePlayer != null && activePlayer.equals(p.getUUID()) && settings(p).dropsAtFeet && !captured.isEmpty()) {
+        if (activePlayer != null && activePlayer.equals(p.getUUID()) && dropsAtFeet(p) && !captured.isEmpty()) {
             moves.add(new Move(p.getUUID(), activeLevel, new ArrayList<>(captured)));
         }
         endBreak();
@@ -400,11 +408,17 @@ public final class AreaMinerMod implements ModInitializer {
         try { store.save(p.getUUID(), s); link.changed(p); return true; }
         catch (Exception e) { LOG.error("Cannot save player preferences: {}", e.getMessage()); tell(p, "error.save"); return false; }
     }
+    /** The player's settings as the client mod shows them: drops as the server decides, when it does. */
     Protocol.State snapshot(ServerPlayer p) {
-        return Protocol.State.of(settings(p));
+        return Protocol.State.of(settings(p)).withFeet(dropsAtFeet(p));
     }
     boolean applySnapshot(ServerPlayer p, Protocol.State state) {
-        state.applyTo(settings(p)); return changed(p);
+        Settings s = settings(p);
+        // While the server decides the drops, the player's own choice is kept for when it no longer does.
+        boolean own = s.dropsAtFeet;
+        state.applyTo(s);
+        if (forcedDrops() != null) s.dropsAtFeet = own;
+        return changed(p);
     }
 
     // ---- /areaminer ----
@@ -434,7 +448,13 @@ public final class AreaMinerMod implements ModInitializer {
         String sub = args.length == 0 ? "next" : args[0].toLowerCase(Locale.ROOT);
         if (sub.equals("reload")) {
             if (!admin(source)) { source.sendSystemMessage(Component.literal(sourceMessages(source).get("error.permission"))); return 1; }
-            readConfig(); jobs.clear(); if (server != null) preview.clear(server); source.sendSystemMessage(Component.literal(sourceMessages(source).get("reloaded"))); return 1;
+            readConfig(); jobs.clear();
+            if (server != null) {
+                preview.clear(server);
+                // The drops setting may have changed: the client mods show it (and whether it can be changed).
+                for (ServerPlayer p : server.getPlayerList().getPlayers()) link.changed(p);
+            }
+            source.sendSystemMessage(Component.literal(sourceMessages(source).get("reloaded"))); return 1;
         }
         if (sub.equals("help")) { help(source); return 1; }
         if (!(source.getEntity() instanceof ServerPlayer p)) { source.sendSystemMessage(Component.literal(Messages.ENGLISH.get("error.in.game"))); return 1; }
@@ -480,16 +500,28 @@ public final class AreaMinerMod implements ModInitializer {
                 case "status" -> {
                     require(args, 1);
                     tell(p, "status.modes", s.label(mode(p), m), s.label(Mode.PLANE, m), s.label(Mode.CUBE, m), s.label(Mode.STAIRS, m), s.label(Mode.FLATTEN, m));
-                    tell(p, "status.options", s.highlight ? "ON" : "OFF", m.get(s.dropsAtFeet ? "drops.feet" : "drops.block"), s.durabilityLabel(m), s.toolMask);
+                    tell(p, "status.options", s.highlight ? "ON" : "OFF", dropsLabel(p, m), s.durabilityLabel(m), s.toolMask, s.colorLabel(m));
                 }
                 case "highlight" -> {
                     require(args, 2); String value = args[1].toLowerCase(Locale.ROOT);
                     if (!value.equals("on") && !value.equals("off")) throw new IllegalArgumentException();
                     s.highlight = value.equals("on"); changed(p); tell(p, "set.highlight", s.highlight ? "ON" : "OFF");
                 }
+                case "color" -> {
+                    // color gaming 5: the gaming highlight at speed 5.
+                    if (args.length != 2 && args.length != 3) throw new IllegalArgumentException();
+                    int color = Settings.parseColor(args[1]);
+                    if (args.length == 3) {
+                        int speed = Integer.parseInt(args[2]);
+                        if (color != Settings.GAMING || !Settings.selectableGamingSpeed(speed)) throw new IllegalArgumentException();
+                        s.gamingSpeed = speed;
+                    }
+                    s.highlightColor = color; changed(p); tell(p, "set.color", s.colorLabel(m));
+                }
                 case "drops" -> {
                     require(args, 2); String value = args[1].toLowerCase(Locale.ROOT);
                     if (!value.equals("feet") && !value.equals("block")) throw new IllegalArgumentException();
+                    if (forcedDrops() != null) { tell(p, "drops.locked", m.get(forcedDrops() ? "drops.feet" : "drops.block")); return 1; }
                     s.dropsAtFeet = value.equals("feet"); changed(p); tell(p, "set.drops", m.get(s.dropsAtFeet ? "drops.feet" : "drops.block"));
                 }
                 case "tools" -> {
