@@ -18,6 +18,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import areaminer.Settings;
 import areaminer.server.SettingsPayload;
 import areaminer.protocol.Protocol;
 public final class AreaMinerClient implements ClientModInitializer {
@@ -30,6 +31,8 @@ public final class AreaMinerClient implements ClientModInitializer {
     public static Config config = new Config();
     public static KeyMapping cycleKey, modifierKey, settingsKey;
     public static boolean supported;
+    /** The server decides where drops go, so the settings screen cannot change it. */
+    public static boolean dropsLocked;
     private static boolean helloPending, applyInFlight;
     /** Ticks since the hello went out, while no reply has come; -1 when not waiting. */
     private static int helloTicks = -1;
@@ -66,6 +69,10 @@ public final class AreaMinerClient implements ClientModInitializer {
                     Config loaded = new Config();
                     loaded.state = Protocol.State.parse(fields);
                     loaded.pending = saved.has("pending") && saved.get("pending").getAsBoolean();
+                    // A gaming speed past the screen's limit can only come from editing this file (unsupported, up to
+                    // GAMING_SPEED_LIMIT). Send it on the next join like the screen's own changes; otherwise the
+                    // server's settings would replace it.
+                    if (loaded.state.gamingSpeed() > Settings.MAX_GAMING_SPEED) loaded.pending = true;
                     config = loaded;
                 }
             }
@@ -79,7 +86,7 @@ public final class AreaMinerClient implements ClientModInitializer {
         // Fabric sends minecraft:register right after JOIN. Paper drops replies on channels the client has not
         // registered yet, so the hello waits for the next client tick.
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client) -> {
-            supported = false; unsupported = false; versionNoticed = false; helloTicks = 0; status("areaminer.status.waiting", false);
+            supported = false; dropsLocked = false; unsupported = false; versionNoticed = false; helloTicks = 0; status("areaminer.status.waiting", false);
             helloPending = true;
         });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -92,7 +99,7 @@ public final class AreaMinerClient implements ClientModInitializer {
             }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler,client) -> {
-            supported = false; unsupported = false; helloTicks = -1; helloPending = false; applyInFlight = false; status("areaminer.status.disconnected", false);
+            supported = false; dropsLocked = false; unsupported = false; helloTicks = -1; helloPending = false; applyInFlight = false; status("areaminer.status.disconnected", false);
         });
         // The options-screen button is added by OptionsScreenMixin.
     }
@@ -112,6 +119,7 @@ public final class AreaMinerClient implements ClientModInitializer {
                 if (!versionNoticed) { versionNoticed = true; chat("areaminer.chat.version"); }
                 status("areaminer.status.version", true); refresh(); return;
             }
+            dropsLocked = "true".equals(data.get("dropslock"));
             String response = data.get("status");
             if ("error".equals(response)) {
                 if (applyInFlight) {
