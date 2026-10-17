@@ -7,6 +7,7 @@ import com.google.gson.annotations.SerializedName;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
+import areaminer.Settings;
 /** config/areaminer/config.json — same keys and defaults as the Paper config.yml. */
 final class ServerConfig {
     private static final Gson JSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -18,6 +19,8 @@ final class ServerConfig {
         @SerializedName("blocks-total-per-tick") int blocksTotalPerTick = 256;
         @SerializedName("vein-mining") boolean veinMining = true;
         @SerializedName("vein-max-blocks") int veinMaxBlocks = 64;
+        /** player: each player chooses / feet: everyone's drops go to their feet / block: drops stay where broken. */
+        String drops = "player";
         List<String> materials = new ArrayList<>(List.of(
             "minecraft:stone", "minecraft:cobblestone", "minecraft:mossy_cobblestone",
             "minecraft:granite", "minecraft:polished_granite", "minecraft:diorite", "minecraft:polished_diorite",
@@ -41,9 +44,15 @@ final class ServerConfig {
     final Data data;
     final Set<Block> materials = new HashSet<>(), ores = new HashSet<>();
     final int perPlayer, perTick, veinMax;
+    /** Where everyone's drops go, or null when each player chooses. */
+    final Boolean dropsAtFeet;
     final List<String> warnings = new ArrayList<>();
     private ServerConfig(Data data) {
         this.data = data;
+        Boolean drops = null;
+        try { drops = Settings.dropsPolicy(data.drops); }
+        catch (IllegalArgumentException e) { warnings.add("Ignored invalid drops (use player, feet or block): " + data.drops); }
+        dropsAtFeet = drops;
         readBlocks(data.materials, materials, "material");
         readBlocks(data.ores, ores, "ore");
         veinMax = Math.max(1, Math.min(1000, data.veinMaxBlocks));

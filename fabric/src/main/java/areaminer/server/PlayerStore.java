@@ -42,6 +42,10 @@ final class PlayerStore {
         result.toolMask = Math.max(0, Math.min(127, integer(o, "tools", Settings.DEFAULT_TOOLS)));
         result.highlight = bool(o, "highlight", true);
         result.dropsAtFeet = bool(o, "drops-at-feet", true);
+        int color = integer(o, "highlight-color", Settings.DEFAULT_COLOR);
+        if (Settings.validColor(color)) result.highlightColor = color;
+        int speed = integer(o, "gaming-speed", Settings.DEFAULT_GAMING_SPEED);
+        if (Settings.validGamingSpeed(speed)) result.gamingSpeed = speed;
         double durability = o.has("durability") ? safe(() -> o.get("durability").getAsDouble(), 1d) : 1;
         if (durability == 0 || durability == .5 || durability == 1) result.durability = durability;
         return result;
@@ -54,6 +58,8 @@ final class PlayerStore {
         o.addProperty("flatten-width", s.flattenWidth); o.addProperty("flatten-depth", s.flattenDepth); o.addProperty("flatten-height", s.flattenHeight);
         o.addProperty("tools", s.toolMask);
         o.addProperty("highlight", s.highlight); o.addProperty("drops-at-feet", s.dropsAtFeet); o.addProperty("durability", s.durability);
+        o.addProperty("highlight-color", s.highlightColor);
+        o.addProperty("gaming-speed", s.gamingSpeed);
         root.add(id.toString(), o);
         if (readOnly) throw new IllegalStateException(file + " could not be read or backed up");
         Files.createDirectories(file.getParent());

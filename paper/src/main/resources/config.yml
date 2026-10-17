@@ -11,6 +11,10 @@ blocks-total-per-tick: 256
 # vein-max-blocks: 1回の上限ブロック数（最初の鉱石を含む、1～1000。最初の鉱石から各方向16マス以内）。
 vein-mining: true
 vein-max-blocks: 64
+# 範囲破壊・鉱脈で出たアイテムの行き先。
+# player: 各プレイヤーが選ぶ（/areaminer drops・MODの設定画面） / feet: 全員足元に集める / block: 全員壊した場所に落とす
+# player 以外にすると、MODの設定画面のドロップのボタンは押せなくなる。
+drops: player
 # この一覧内のブロックが対象。石と土が混在していてもまとめて破壊。
 # 鉱石は ores（鉱脈）で扱う。木材・チェスト・岩盤は既定で対象外。
 materials:

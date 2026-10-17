@@ -23,6 +23,14 @@ public final class AreaMinerScreen extends Screen {
     private void set(String key, String value) {
         Map<String,String> data = draft.fields(); data.put(key,value); draft = Protocol.State.parse(data); dirty = true; rebuildWidgets();
     }
+    /**
+     * The drops button's note: the server decides (the button is disabled), or, away from an AreaMiner server, that a
+     * server may decide for everyone. Connected to one that lets the player choose (singleplayer too): none.
+     */
+    public static String dropsNote() {
+        if (AreaMinerClient.dropsLocked) return "areaminer.drops.locked";
+        return AreaMinerClient.supported ? null : "areaminer.drops.not_connected";
+    }
     private void toggleTool(int bit) { set("tools",""+(draft.tools() ^ bit)); }
     /** Steps a value through min..max, skipping values the protocol rejects (e.g. a 1×1 plane). */
     private void cycle(String key, int current, int min, int max) {
@@ -59,12 +67,19 @@ public final class AreaMinerScreen extends Screen {
         }
         if (page == 0) {
             button(t("areaminer.highlight", onOff(draft.highlight())), 0, 0, () -> set("highlight", "" + !draft.highlight()));
-            button(t("areaminer.drops", t(draft.feet() ? "areaminer.drops.feet" : "areaminer.drops.block")), 1, 0, () -> set("feet", "" + !draft.feet()));
+            Button drops = button(t("areaminer.drops", t(draft.feet() ? "areaminer.drops.feet" : "areaminer.drops.block")), 1, 0, () -> set("feet", "" + !draft.feet()));
+            drops.active = !AreaMinerClient.dropsLocked;
+            String note = dropsNote();
+            if (note != null) drops.setTooltip(Tooltip.create(t(note)));
             button(t("areaminer.durability", t(draft.durability() == 1 ? "areaminer.durability.normal" : draft.durability() == .5 ? "areaminer.durability.half" : "areaminer.durability.none")), 2, 0,
                 () -> set("durability", draft.durability() == 1 ? "0.5" : draft.durability() == .5 ? "0" : "1"));
             button(t("areaminer.key.modifier", AreaMinerClient.modifierKey.getTranslatedKeyMessage()), 0, 1, this::keys);
             button(t("areaminer.key.cycle", AreaMinerClient.cycleKey.getTranslatedKeyMessage()), 1, 1, this::keys);
             button(t("areaminer.key.settings", AreaMinerClient.settingsKey.getTranslatedKeyMessage()), 2, 1, this::keys);
+            button(t("areaminer.color", ColorScreen.name(draft.color())), 0, 2,
+                () -> minecraft.gui.setScreen(new ColorScreen(this, draft.color(), draft.gamingSpeed(), (rgb, speed) -> {
+                    set("gamingspeed", "" + speed); set("color", "" + rgb);
+                })));
             button(t("areaminer.reset"), 2, 2, () -> { draft = Protocol.State.defaults(); dirty = true; rebuildWidgets(); });
         } else if (page == 1) {
             int max = Settings.MAX_SIDE;
